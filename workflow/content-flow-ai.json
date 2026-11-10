@@ -1,0 +1,525 @@
+{
+  "name": "Content Flow AI",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ec1a1482-30e1-493c-8565-e28ce1feeebf",
+              "name": "product",
+              "value": "Zarar Arabic Perfume (musky, masculine, luxury)",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-224, 160],
+      "id": "4d4cb402-d641-4543-8432-318304ca7251",
+      "name": "Prepare Input"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            { "id": "Products", "displayName": "Products", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "Captions", "displayName": "Captions", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "Hashtags", "displayName": "Hashtags", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "caption", "displayName": "caption", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "hashtags", "displayName": "hashtags", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "product", "displayName": "product", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [720, -32],
+      "id": "0eff3239-5848-4cb2-902b-734528bc7d4e",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ffd482b8-2a66-4b96-aeda-75a800cac701",
+              "name": "caption",
+              "value": "={{$json.choices[0].message.content.split(\"Hashtags:\")[0].replace(\"Caption:\", \"\").trim()}}",
+              "type": "string"
+            },
+            {
+              "id": "0dbd1cee-c196-4dc1-af70-318f2bd26c73",
+              "name": "hashtags",
+              "value": "={{$json.choices[0].message.content.split(\"Hashtags:\")[1].trim()}}",
+              "type": "string"
+            },
+            {
+              "id": "e5e8ebeb-f19e-4d19-8e0f-72cda198ba42",
+              "name": "product",
+              "value": "={{$node[\"Prepare Input\"].json.product}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [384, 160],
+      "id": "884805b1-e5c4-4084-a9ef-964c00972a6f",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "content": "Caption Generator,\ngets a text input of product description"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-288, 16],
+      "id": "c70ff9fc-c712-430c-bf6f-758f9df81849",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.1-8b-instant\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a luxury marketing copywriter.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Write an Instagram caption for {{$json.product}}.\\n\\nFORMAT STRICTLY:\\nCaption: <write caption only>\\nHashtags: <write 10-15 SEO hashtags>\\n\\nRules:\\n- Do NOT mix caption and hashtags\\n- No extra text\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 200\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [96, 160],
+      "id": "ef0cb68c-e4af-4c37-8b93-7e81c857769d",
+      "name": "HTTP Request",
+      "credentials": {
+        "groqApi": {
+          "id": "",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Https Request uses POST method to access Groq LLM via Groq API.\nIt generates captions and SEO hashtags.\nall commands are added through Json Code "
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "id": "192ed6a3-5fc7-4db7-aa21-44ad5d787177",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Edit Fields edits the output generated by Groq and divides it into 3 fields, i.e. Product, Caption and Hashtags, by trimming the generated output"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [304, 32],
+      "id": "86b2c844-9aa5-4295-b5bf-342c19b02b8c",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "Google Sheets Node stores the generated, edited data into a Pre made Google sheet named AI captions Database, accessed by Sheets APi using Google Cloud Platform "
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [640, -160],
+      "id": "cefb55ac-1c3a-49ea-ad78-c1de3a7a2588",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3b14add4-dfcd-4569-911c-570dbe2f3771",
+              "name": "prompt",
+              "value": "=Create a luxury advertisement image for a Luxurious Perfume named ZARAR, an Arabic fragrance black glass bottle, masculine and Musky {{$json.product}}. The product must be centered, premium studio photography, black and gold theme, cinematic lighting, soft shadows, ultra realistic, commercial perfume branding, high-end fashion magazine style, clean minimal background, 8k resolution.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-2288, 368],
+      "id": "7803e708-d031-4ff0-b74f-3c437a2cd63c",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "url": "=https://image.pollinations.ai/prompt/{{ encodeURIComponent($json.prompt) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [-1824, 368],
+      "id": "89cead32-d647-405e-9d2e-e18b50a4dd02",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "name": "={{$json.product || 'perfume'}}-ad-{{$now.toFormat('yyyy-LL-dd_HH-mm')}}.jpg",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_DRIVE_FOLDER_ID",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [-1328, 368],
+      "id": "3d15084b-9b59-4d2b-b445-78477a670621",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Graphical Ads generator,\nGets Text input of product description",
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-2352, 256],
+      "id": "824f479a-32fa-41b7-b4c2-74f4dece4c6a",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "Creates graphical ads of the product based on the input prompt, using Pollinations (free to use, but not strong enough to generate properly postable advertisements).\nReturns the image in binary, downloadable form\n",
+        "height": 192,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1888, 192],
+      "id": "1b86e8e5-2df5-4867-bbd9-47ea7c14850b",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "The image generated in binary form is stored in Google Drive using Google OAuth credentials.\nImages are stored in a folder named AI ads, already created in Google Drive",
+        "height": 192,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1392, 224],
+      "id": "3ed72fd5-41e8-4350-8112-e8eb568e9ca6",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\n\nconst b64 = item.json.data?.[0]?.b64_json;\n\nif (!b64) {\n  throw new Error('No b64_json image found in the previous node output.');\n}\n\nreturn [\n  {\n    json: {\n      fileName: 'generated-ad.png',\n      mimeType: 'image/png',\n    },\n    binary: {\n      data: {\n        data: b64,\n        mimeType: 'image/png',\n        fileName: 'generated-ad.png',\n        fileExtension: 'png',\n      },\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 528],
+      "id": "47106419-9ed8-4deb-9929-27226de74e0c",
+      "name": "Extract Generated Image"
+    },
+    {
+      "parameters": {
+        "content": "POST multipart/form-data here. Required file field: productImage. Optional text fields: product, style, platform, aspectRatio.",
+        "height": 140,
+        "width": 228,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-576, 416],
+      "id": "6486a8b5-2739-4bf9-ac18-da6af19f557d",
+      "name": "Note - Upload"
+    },
+    {
+      "parameters": {
+        "content": "This node generates the new advertisement based on the input raw image and prompt.\nUses an OpenAI API key (requires billing)",
+        "height": 128,
+        "width": 272,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-48, 416],
+      "id": "c21c9994-ce5a-4f19-b407-62f12c12202c",
+      "name": "Note - Gemini"
+    },
+    {
+      "parameters": {
+        "formTitle": "raw image collector",
+        "formDescription": "Upload Raw image of your product and enter product details.",
+        "formFields": {
+          "values": [
+            { "fieldLabel": "ProductImage", "fieldType": "file", "acceptFileTypes": ".jpg,.png,.webp", "requiredField": true },
+            { "fieldLabel": "product", "requiredField": true },
+            { "fieldLabel": "Style", "requiredField": true },
+            { "fieldLabel": "Platform" },
+            { "fieldLabel": "AspectRatio" }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [-528, 528],
+      "id": "351deadf-3581-408e-a9ba-a5dbc227fabb",
+      "name": "On form submission",
+      "webhookId": "5dac9c47-0567-4345-bc73-6405bb3fe2f2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/edits",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_OPENAI_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "model", "value": "gpt-image-1" },
+            { "name": "prompt", "value": "Create a professional advertisement from the uploaded raw image of the product. Keep the product clear,add a premium background, make it suitable for Social media marketing." },
+            { "parameterType": "formBinaryData", "name": "image", "inputDataFieldName": "ProductImage" },
+            { "name": "size", "value": "1024x1024" },
+            { "name": "n", "value": "1" },
+            { "name": "quality", "value": "medium" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [32, 528],
+      "id": "e1ac33b8-99d6-46f3-8c45-2ad2f215aaec",
+      "name": "GPT Image Edit"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "YOUR_REVIEWER_EMAIL@example.com",
+        "subject": "AI Ad Approval",
+        "message": "={{ `Hello,\n\nA new AI-generated ad is ready for review.\n\nProduct:\n${$json.product}\n\nCaption:\n${$json.caption}\n\nHashtags:\n${$json.hashtags}\n\nGenerated Image:\n${$json.driveWebViewLink}\n\nFile Name:\n${$json.driveFileName}\n\nPlease review the caption, hashtags, and image.\n\nClick Approve if the ad is ready for posting.\nClick Decline if the ad should be regenerated.\n\nIf approved, it will move to the social media posting stage.\nIf declined, the workflow will regenerate the content.` }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1360, 304],
+      "id": "1acfc6bb-b4aa-48c3-b34d-c87caa180e38",
+      "name": "Send message and wait for response",
+      "webhookId": "95ffbc30-b693-4ba8-ba75-6b91151c4adb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [1136, 304],
+      "id": "47789848-91a7-48ae-98c4-721bccbff65d",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "25d9bbfd-20fa-4169-9485-90695571871b",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1584, 304],
+      "id": "d78198e8-6786-44e0-a6fe-3db63e31e98d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "ab2d01ce-9cf1-488d-a1b6-be999036f645", "name": "approval_status", "value": "Rejected", "type": "string" },
+            { "id": "8d821e30-6e25-4e5c-b7e5-19a253106c3a", "name": "next_step", "value": "Regenerate Content", "type": "string" },
+            { "id": "a09d8e26-79ba-4eae-a08e-29ebcf32f4cb", "name": "reason", "value": "Human Reviewer declined the Generated Ad", "type": "string" },
+            { "id": "3ab57330-c042-4166-82ee-970ba0b4fcee", "name": "retry_count", "value": "={{ ($json.retry_count || 0) + 1 }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1728, 496],
+      "id": "38fc78d0-a857-49d4-800f-99dbaff7ef4f",
+      "name": "Rejected- RegenarationRequired"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_SUBWORKFLOW_ID",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [1968, 496],
+      "id": "f161291e-9f7d-4166-9ea0-6cd48a4945fb",
+      "name": "Call 'Gemini Product Ad Image Edit - Webhook to Google Drive'"
+    },
+    {
+      "parameters": {
+        "content": "Converts the created image from JSON (base64) form into an actual binary image file"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, 400],
+      "id": "a7c3e2f1-5b4d-4e8a-9f60-1d2c3b4a5e6f",
+      "name": "Sticky Note7"
+    }
+  ],
+  "connections": {
+    "Prepare Input": {
+      "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request": {
+      "main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+    },
+    "Edit Fields": {
+      "main": [[
+        { "node": "Append row in sheet", "type": "main", "index": 0 },
+        { "node": "Merge", "type": "main", "index": 0 }
+      ]]
+    },
+    "Edit Fields1": {
+      "main": [[{ "node": "HTTP Request1", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request1": {
+      "main": [[{ "node": "Upload file", "type": "main", "index": 0 }]]
+    },
+    "Upload file": {
+      "main": [[{ "node": "Merge", "type": "main", "index": 1 }]]
+    },
+    "On form submission": {
+      "main": [[{ "node": "GPT Image Edit", "type": "main", "index": 0 }]]
+    },
+    "GPT Image Edit": {
+      "main": [[{ "node": "Extract Generated Image", "type": "main", "index": 0 }]]
+    },
+    "Merge": {
+      "main": [[{ "node": "Send message and wait for response", "type": "main", "index": 0 }]]
+    },
+    "Send message and wait for response": {
+      "main": [[{ "node": "If", "type": "main", "index": 0 }]]
+    },
+    "If": {
+      "main": [
+        [],
+        [{ "node": "Rejected- RegenarationRequired", "type": "main", "index": 0 }]
+      ]
+    },
+    "Rejected- RegenarationRequired": {
+      "main": [[{ "node": "Call 'Gemini Product Ad Image Edit - Webhook to Google Drive'", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
