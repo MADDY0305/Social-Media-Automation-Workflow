@@ -1,52 +1,108 @@
 # Social Media Automation Workflow (Content Flow AI)
 
-An [n8n](https://n8n.io) workflow that creates social media ad content with AI. It writes captions and hashtags, generates ad images, saves everything to Google Sheets and Google Drive, and emails a human reviewer to approve or reject each ad before it's posted.
+An end-to-end [n8n](https://n8n.io) workflow that turns a **raw product photo** into a ready-to-post **Instagram ad**. AI generates the ad image, caption and hashtags, a person approves the result by email, and the post is published automatically through **Buffer**.
 
 ![Workflow overview](images/workflow-overview.jpg)
 
-## What it does
+## How it works
 
-| Stage | Nodes | What happens |
-|---|---|---|
-| **Caption generator** | Prepare Input → HTTP Request (Groq) → Edit Fields → Append row in sheet | Sends the product description to Groq (`llama-3.1-8b-instant`), which writes an Instagram caption and 10–15 SEO hashtags. The reply is split into `product`, `caption` and `hashtags` and saved as a new row in Google Sheets. |
-| **Text-to-image ads** | Edit Fields1 → HTTP Request1 (Pollinations) → Upload file | Builds an image prompt and generates a luxury-style ad image with Pollinations (free). The image is saved to a Google Drive folder. |
-| **Image-to-image ads** | On form submission → GPT Image Edit → Extract Generated Image | A form takes a raw product photo plus product details. OpenAI `gpt-image-1` turns the photo into a polished ad, and a Code node converts the base64 result into an image file. |
-| **Human approval** | Merge → Send message and wait for response (Gmail) → If | Emails the caption, hashtags and Drive image link to a reviewer, who clicks Approve or Decline. |
-| **Regeneration** | Rejected → Call sub-workflow | If the reviewer declines, the workflow records the rejection, increments `retry_count` and calls a sub-workflow to regenerate the ad. |
+```mermaid
+flowchart TD
+    A[Form trigger:<br/>user uploads raw product image<br/>+ product details] --> B[GPT image model:<br/>generate Instagram-ready ad]
+    B --> C[Upload image to Cloudinary]
+    A --> D[Groq LLM:<br/>trend-aware captions + SEO hashtags]
+    D --> E[Save caption & hashtags<br/>to Google Sheets]
+    C --> F[Merge image + caption + hashtags]
+    E --> F
+    F --> G[Email to user for approval]
+    G --> H{Approved?}
+    H -- Yes --> I[Post to Instagram via Buffer]
+    H -- No --> J{What should change?}
+    J -- Picture --> K[Regenerate image]
+    J -- Caption --> L[Regenerate caption]
+    J -- Hashtags --> M[Regenerate hashtags]
+    J -- All three --> N[Regenerate everything]
+    K --> G
+    L --> G
+    M --> G
+    N --> G
+```
+
+### 1. Trigger: raw image upload
+The workflow starts from an **n8n Form trigger**. The user uploads a raw photo of their product (`.jpg`, `.png` or `.webp`) and enters product details such as the product name, style, platform and aspect ratio.
+
+### 2. Ad image generation (OpenAI GPT image model)
+The raw photo is sent to OpenAI's image model (`gpt-image-1`, through the `/v1/images/edits` endpoint). It returns a polished advertisement suitable for Instagram that keeps the product clear and adds a premium background. A Code node converts the base64 response into an image file.
+
+### 3. Cloud storage (Cloudinary)
+The generated ad is uploaded to **Cloudinary**, which gives it a public URL for review and posting.
+
+### 4. Captions and hashtags (Groq)
+**Groq** (Llama 3.1) writes an Instagram caption and 10–15 SEO hashtags for the product. The prompt asks it to use **trend analysis** so the content matches what's currently performing for that kind of product.
+
+### 5. Storage (Google Sheets)
+The product, caption and hashtags are saved as a row in Google Sheets. This keeps a history of all generated content.
+
+### 6. Merge and approval email (Gmail)
+The image link, caption and hashtags are merged into one package and emailed to the user with **Approve / Decline** buttons (Gmail "send and wait for response").
+
+### 7. Publish (Buffer to Instagram)
+If the user approves, the content is posted to **Instagram through Buffer**.
+
+### 8. Targeted regeneration
+If the user declines, the workflow asks **what to change**. Each option has its own pipeline:
+
+| Choice | What gets regenerated |
+|---|---|
+| Picture | The ad image only (GPT, then Cloudinary) |
+| Caption | The caption only (Groq) |
+| Hashtags | The hashtags only (Groq) |
+| All three | Image, caption and hashtags |
+
+The revised content goes back to the user for approval. The loop repeats until the user approves, and the approved content is then posted.
 
 ## Tech stack
 
-- **n8n**: workflow automation
-- **Groq API** (Llama 3.1): captions and hashtags
-- **OpenAI gpt-image-1**: image-to-image ad generation
-- **Pollinations**: free text-to-image generation
-- **Google Sheets / Google Drive**: storage
-- **Gmail**: human-in-the-loop approval
+| Purpose | Tool |
+|---|---|
+| Automation | n8n |
+| Ad image generation | OpenAI GPT image model (`gpt-image-1`) |
+| Image hosting | Cloudinary |
+| Captions and hashtags | Groq API (Llama 3.1) |
+| Content log | Google Sheets |
+| Human approval | Gmail |
+| Publishing | Buffer to Instagram |
 
 ## Setup
 
-1. In n8n, create a new workflow, open the **⋯** menu, choose **Import from File**, and select [`workflow/content-flow-ai.json`](workflow/content-flow-ai.json).
+1. In n8n, open the **⋯** menu, choose **Import from File**, and select the JSON in [`workflow/`](workflow/).
 2. Create these credentials in n8n and select them on the matching nodes:
-   - Groq API → **HTTP Request**
-   - Google Sheets OAuth2 → **Append row in sheet**
-   - Google Drive OAuth2 → **Upload file**
-   - Gmail OAuth2 → **Send message and wait for response**
-3. Replace the placeholders:
+   - OpenAI API key (Header Auth: `Authorization: Bearer <key>`)
+   - Cloudinary (cloud name and upload preset or API key)
+   - Groq API
+   - Google Sheets OAuth2
+   - Gmail OAuth2
+   - Buffer access token, with your Instagram profile connected in Buffer
+3. Replace the placeholders in the workflow:
 
-   | Placeholder | Node |
+   | Placeholder | Where |
    |---|---|
-   | `YOUR_GOOGLE_SHEET_ID` | Append row in sheet |
-   | `YOUR_GOOGLE_DRIVE_FOLDER_ID` | Upload file |
    | `YOUR_OPENAI_API_KEY` | GPT Image Edit (Authorization header) |
-   | `YOUR_REVIEWER_EMAIL@example.com` | Send message and wait for response |
-   | `YOUR_SUBWORKFLOW_ID` | Call 'Gemini Product Ad Image Edit…' |
+   | `YOUR_GOOGLE_SHEET_ID` | Append row in sheet |
+   | `YOUR_REVIEWER_EMAIL@example.com` | Approval email node |
+   | `YOUR_GOOGLE_DRIVE_FOLDER_ID` / `YOUR_SUBWORKFLOW_ID` | Legacy nodes, if used |
 
 4. Create a Google Sheet with the columns `product`, `caption` and `hashtags`.
-5. Edit the product text in **Prepare Input** and **Edit Fields1**, then run the workflow.
+5. Activate the workflow and open the form URL to submit a product image.
 
-> Never commit real API keys. For the OpenAI key, a Header Auth credential is safer than pasting the key into the node.
+> Never commit real API keys. Keep them in n8n credentials instead of pasting them into nodes.
 
-## Notes
+## Repository contents
 
-- Pollinations is free, but its images aren't always good enough to post. The OpenAI branch gives better results but needs a paid API key.
-- The JSON in this repo is a cleaned-up export, so some node connections may need checking against the screenshot after you import it.
+```
+workflow/content-flow-ai.json   n8n workflow export
+images/workflow-overview.jpg    screenshot of the full workflow in n8n
+README.md
+```
+
+> **Note:** the JSON currently in `workflow/` is an earlier partial export. It covers the form trigger, GPT image edit, Groq captions, Google Sheets and the approval email, and still contains an older Pollinations/Google Drive test branch. The Cloudinary, Buffer and targeted-regeneration nodes shown in the screenshot will be added with the next full export.
